@@ -1,4 +1,5 @@
 from setuptools import setup
+from io import open
 
 def find_version():
     import os
