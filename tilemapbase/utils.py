@@ -9,7 +9,12 @@ Some utility functions.
 - Cache.
 """
 
-import collections as _collections
+try:
+    # python 2
+    # needs to come first, because collections exists in both python2 and python3
+    import UserDict as _collections
+except:
+    import collections as _collections
 import bz2 as _bz2
 import PIL.Image as _Image
 import threading as _threading
@@ -30,7 +35,7 @@ def start_logging():
     logger.addHandler(ch)
 
 
-class Cache(_collections.UserDict):
+class Cache(_collections.UserDict, object):
     """Simple cache.  Implements the dictionary interface.  Objects are evicted
     from the cache by evicting the object least recently accessed.  Ties are
     broken by order of insertion.
@@ -41,7 +46,7 @@ class Cache(_collections.UserDict):
         self._maxcount = maxcount
         self._access_count = 0
         self._accesses = {}
-        super().__init__()
+        super(Cache,self).__init__()
     
     def __setitem__(self, key, value):
         if len(self.data) == self._maxcount and key not in self.data:
@@ -76,7 +81,7 @@ class ImageCache(Cache):
     `bytes` object will be decompressed.
     """
     def __init__(self, maxcount=32):
-        super().__init__(maxcount)
+        super(ImageCache,self).__init__(maxcount)
 
     class _CompressedImage():
         def __init__(self, mode, size, data):
@@ -94,16 +99,28 @@ class ImageCache(Cache):
             value = self._CompressedImage(value.mode, value.size, data)
         except:
             pass
-        super().__setitem__(key, value)
+        super(ImageCache,self).__setitem__(key, value)
 
     def __getitem__(self, key):
-        value = super().__getitem__(key)
+        value = super(ImageCache,self).__getitem__(key)
         if isinstance(value, self._CompressedImage):
             image = _Image.new(value.mode, value.size)
             data = _bz2.decompress(value.data)
             if value.mode == "P":
                 pal = data[-768:]
-                image.putpalette(list(pal))
+                import sys
+                if sys.version_info.major == 3:
+                    palette = list(pal)
+                else:
+                    import re
+                    palette = []
+                    for s in pal.split(","):
+                        s = re.sub("[\[\] ]","",s)
+                        try:
+                            palette.append(int(s))
+                        except ValueError:
+                            pass
+                image.putpalette(palette)
                 data = data[:-768]
             image.frombytes(data)
             value = image

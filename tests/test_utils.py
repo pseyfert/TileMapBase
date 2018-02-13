@@ -1,5 +1,10 @@
 import pytest
-import unittest.mock as mock
+try:
+    # python 3
+    import unittest.mock as mock
+except ImportError:
+    # python 2
+    import mock
 
 import tilemapbase.utils as utils
 import PIL.Image
@@ -81,11 +86,12 @@ def test_ImageCache(random_pal_image):
     assert image.getpalette() == random_pal_image.getpalette()
 
 def test_PerThreadProvider():
-    count = 0
+    d = {'count': 0,
+         'called': False
+         }
     def factory():
-        nonlocal count
-        count += 1
-        return count
+        d['count'] += 1
+        return d['count']
     ptp = utils.PerThreadProvider(factory)
     assert ptp.get() == 1
     assert ptp.get() == 1
@@ -98,14 +104,12 @@ def test_PerThreadProvider():
     assert len(ptp.active_objects()) == 2
     barrier.wait()
 
-    called = False
     def dest(a):
         assert a == 2
-        nonlocal called
-        called = True
+        d['called'] = True
     ptp.set_destructor(dest)
 
     time.sleep(0.5)
     assert ptp.get() == 1
     assert len(ptp.active_objects()) == 1
-    assert called
+    assert d['called']

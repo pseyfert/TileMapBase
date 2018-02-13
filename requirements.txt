@@ -9,3 +9,7 @@ pyproj
 # Needed for library to work
 requests
 pillow
+
+# python 2
+mock
+scandir

@@ -1,5 +1,11 @@
 import pytest
-import unittest.mock as mock
+try:
+    # python 3
+    import unittest.mock as mock
+except ImportError:
+    # python 2
+    import mock
+
 import datetime, sqlite3, os, threading
 
 import tilemapbase.cache as cache

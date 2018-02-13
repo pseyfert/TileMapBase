@@ -1,5 +1,10 @@
 import pytest
-import unittest.mock as mock
+try:
+    # python 3
+    import unittest.mock as mock
+except ImportError:
+    # python 2
+    import mock
 import os, shutil
 import PIL.Image
 import datetime
@@ -29,7 +34,7 @@ def test_init_throws(cache, dbexists):
 @pytest.fixture
 def image():
     filename = os.path.join("notebooks", "test.jpg")
-    with open(filename, "br") as f:
+    with open(filename, "rb") as f:
         return f.read()
 
 import collections

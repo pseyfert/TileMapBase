@@ -33,6 +33,8 @@ This object can then be used to plot the basemap to a `matplotlib` axes object.
 import math as _math
 import PIL.Image as _Image
 
+__metaclass__ = type
+
 _EPSG_RESCALE = 20037508.342789244
 
 def _to_3857(x, y):
@@ -194,7 +196,7 @@ class Extent(_BaseExtent):
       and :meth:`to_project_web_mercator` instead.
     """
     def __init__(self, xmin, xmax, ymin, ymax, projection_type="normal"):
-        super().__init__(xmin, xmax, ymin, ymax)
+        super(Extent,self).__init__(xmin, xmax, ymin, ymax)
         if ymin < 0 or ymax > 1:
             raise ValueError("Need 0 < ymin < ymax < 1.")
         if projection_type == "normal":
@@ -313,7 +315,7 @@ class Extent(_BaseExtent):
           neccessary to obtain the required aspect ratio.  Set to `False` to
           allow enlarging the rectangle, which can lead to invalid extents.
         """
-        return Extent(*self._to_aspect(aspect, shrink), self._project_str)
+        return Extent(*(self._to_aspect(aspect, shrink)+(self._project_str,)))
 
     def with_absolute_translation(self, dx, dy):
         """Return a new instance translated by this amount.  Clips `y` to the
@@ -346,7 +348,7 @@ class Extent(_BaseExtent):
     def with_scaling(self, scale):
         """Return a new instance with the same midpoint, but with the width/
         height divided by `scale`.  So `scale=2` will zoom in."""
-        return Extent(*self._with_scaling(scale), self._project_str)
+        return Extent(*(self._with_scaling(scale)+(self._project_str,)))
 
 
 class Plotter():
@@ -386,7 +388,10 @@ class Plotter():
         self._zoom = min(self._zoom, self._tile_provider.maxzoom)
 
     def _needed_zoom(self, web_mercator_range, pixel_range):
-        zoom = _math.log2(pixel_range / (self._tile_provider.tilesize * web_mercator_range))
+        try:
+            zoom = _math.log2(pixel_range / (self._tile_provider.tilesize * web_mercator_range))
+        except AttributeError:
+            zoom = _math.log(pixel_range / (self._tile_provider.tilesize * web_mercator_range),2)
         return max(0, _math.ceil(zoom))
 
     @property

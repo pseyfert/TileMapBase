@@ -53,12 +53,21 @@ typical usage is:
 
 import math as _math
 import os as _os
+try:
+    # python 3
+    from os import scandir
+except ImportError:
+    # python 2
+    from scandir import scandir
+
 import re as _re
 import PIL.Image as _Image
 # For MiniScale images
 _Image.MAX_IMAGE_PIXELS = 91000000
 from .mapping import _BaseExtent
 from .utils import Cache as _Cache
+
+__metaclass__ = type
 
 # Singletons
 _lookup = None
@@ -92,7 +101,7 @@ def _init_scan_one_directory(dir_name):
     over = _re.compile("^GBOver.*\.tif$")
     dirs = []
     dir_name = _os.path.abspath(dir_name)
-    for entry in _os.scandir(dir_name):
+    for entry in scandir(dir_name):
         if entry.is_dir():
             dirs.append(_os.path.abspath(entry.path))
         elif entry.is_file():
@@ -116,7 +125,7 @@ def to_os_national_grid(longitude, latitude):
       `northings` are the residual coordinates in the range [0, 1).
     """
     grid_code, x, y = _code_grid_residual(longitude, latitude)
-    xx, yy = _math.floor(x), _math.floor(y)
+    xx, yy = int(_math.floor(x)), int(_math.floor(y))
     return "{} {} {}".format(grid_code, xx, yy), x - xx, y - yy
 
 def _code_grid_residual(longitude, latitude):
@@ -125,14 +134,14 @@ def _code_grid_residual(longitude, latitude):
     
 def _coords_to_code_grid_residual(x, y):
     codes = "ABCDEFGHJKLMNOPQRSTUVWXYZ"
-    x500, y500 = _math.floor(x / 500000), _math.floor(y / 500000)
+    x500, y500 = int(_math.floor(x / 500000)), int(_math.floor(y / 500000))
     index = (2 + x500) + (3 - y500) * 5
     if index < 0 or index >= 25:
         raise ValueError("Coordinates out of range of National Grid.")
     grid_code = codes[index]
     
     x, y = x - 500000 * x500, y - 500000 * y500
-    x100, y100 = _math.floor(x / 100000), _math.floor(y / 100000)
+    x100, y100 = int(_math.floor(x / 100000)), int(_math.floor(y / 100000))
     index = x100 + (4 - y100) * 5
     if index < 0 or index >= 25:
         raise AssertionError()
@@ -145,7 +154,7 @@ def coords_to_os_national_grid(x, y):
     National Grid convention.
     """
     grid_code, x, y = _coords_to_code_grid_residual(x, y)
-    xx, yy = _math.floor(x), _math.floor(y)
+    xx, yy = int(_math.floor(x)), int(_math.floor(y))
     return "{} {} {}".format(grid_code, xx, yy)
 
 def os_national_grid_to_coords(grid_position):
@@ -223,7 +232,7 @@ class OpenMapLocal(TileSource):
     https://www.ordnancesurvey.co.uk/business-and-government/products/os-open-map-local.html
     """
     def __init__(self):
-        super().__init__()
+        super(OpenMapLocal,self).__init__()
 
     name = "openmap_local"
 
@@ -242,8 +251,8 @@ class OpenMapLocal(TileSource):
         if code not in self._source:
             raise TileNotFoundError("No tiles loaded for square {}".format(code))
         dirname = self._source[code]
-        squarex = _math.floor(x / 10000)
-        squarey = _math.floor(y / 10000)
+        squarex = int(_math.floor(x / 10000))
+        squarey = int(_math.floor(y / 10000))
         x -= squarex * 10000
         y -= squarey * 10000
         if x < 5000 and y < 5000:
@@ -271,7 +280,7 @@ class VectorMapDistrict(TileSource):
     https://www.ordnancesurvey.co.uk/business-and-government/products/vectormap-district.html
     """
     def __init__(self):
-        super().__init__()
+        super(VectorMapDistrict,self).__init__()
 
     name = "vectormap_district"
 
@@ -290,8 +299,8 @@ class VectorMapDistrict(TileSource):
         if code not in self._source:
             raise TileNotFoundError("No tiles loaded for square {}".format(code))
         dirname = self._source[code]
-        squarex = _math.floor(x / 10000)
-        squarey = _math.floor(y / 10000)
+        squarex = int(_math.floor(x / 10000))
+        squarey = int(_math.floor(y / 10000))
         x -= squarex * 10000
         y -= squarey * 10000
         filename = "{}{}{}.tif".format(code, squarex, squarey)
@@ -311,7 +320,7 @@ class TwoFiftyScale(TileSource):
     https://www.ordnancesurvey.co.uk/business-and-government/products/250k-raster.html
     """
     def __init__(self):
-        super().__init__()
+        super(TwoFiftyScale,self).__init__()
 
     name = "250k_raster"
 
@@ -335,7 +344,7 @@ class TwoFiftyScale(TileSource):
 
 class _SingleFileSource(TileSource):
     def __init__(self):
-        super().__init__()
+        super(_SingleFileSource,self).__init__()
         self._filenames = list(self._source.keys())
         self._filename = self._filenames[0]
         self._cache_image = None
@@ -373,14 +382,14 @@ class MiniScale(_SingleFileSource):
     :attr:`filename`.
     """
     def __init__(self):
-        super().__init__()
+        super(MiniScale,self).__init__()
 
     name = "miniscale"
 
     def __call__(self, grid_position):
         x, y = os_national_grid_to_coords(grid_position)
-        tx = _math.floor(x / 100000) * 1000
-        ty = 13000 - _math.floor(y / 100000) * 1000
+        tx = int(_math.floor(x / 100000)) * 1000
+        ty = 13000 - int(_math.floor(y / 100000)) * 1000
         return self._get_image().crop((tx, ty-1000, tx+1000, ty))
 
     @property
@@ -404,15 +413,15 @@ class OverView(_SingleFileSource):
     :attr:`tilesize`.
     """
     def __init__(self):
-        super().__init__()
+        super(OverView,self).__init__()
         self._tilesize = 100
 
     name = "overview"
 
     def __call__(self, grid_position):
         x, y = os_national_grid_to_coords(grid_position)
-        tx = _math.floor(x / self.size_in_meters) * self._tilesize + 1300
-        ty = 2900 - _math.floor(y / self.size_in_meters) * self._tilesize
+        tx = int(_math.floor(x / self.size_in_meters)) * self._tilesize + 1300
+        ty = 2900 - int(_math.floor(y / self.size_in_meters)) * self._tilesize
         return self._get_image().crop((tx, ty - self._tilesize, tx + self._tilesize, ty))
 
     @property
@@ -438,7 +447,7 @@ def _separate_init(matcher, start_directory, callback):
     directories = [start_directory]
     while len(directories) > 0:
         dir_name = _os.path.abspath(directories.pop())
-        for entry in _os.scandir(dir_name):
+        for entry in scandir(dir_name):
             if entry.is_dir():
                 directories.append(_os.path.abspath(entry.path))
             elif entry.is_file() and matcher.match(entry.name):
@@ -453,7 +462,7 @@ class TwentyFiveRaster(TileSource):
     :meth:`init`.
     """
     def __init__(self):
-        super().__init__()
+        super(TwentyFiveRaster,self).__init__()
 
     name = "25k_raster"
 
@@ -482,8 +491,8 @@ class TwentyFiveRaster(TileSource):
         if code not in self._source:
             raise TileNotFoundError("No tiles loaded for square {}".format(code))
         dirname = self._source[code]
-        squarex = _math.floor(x / 10000)
-        squarey = _math.floor(y / 10000)
+        squarex = int(_math.floor(x / 10000))
+        squarey = int(_math.floor(y / 10000))
         filename = "{}{}{}.tif".format(code.lower(), squarex, squarey)
         return _Image.open(_os.path.join(dirname, filename))
 
@@ -504,7 +513,7 @@ class MasterMap(TileSource):
     :meth:`init`.
     """
     def __init__(self):
-        super().__init__()
+        super(MasterMap,self).__init__()
         self.tilesize = 3200
 
     name = "MasterMap"
@@ -554,8 +563,8 @@ class MasterMap(TileSource):
             x, y = int(x), int(y)
         except Exception:
             raise ValueError("{} appears not to be a valid national grid reference".format(grid_position))
-        squarex = _math.floor(x / 1000)
-        squarey = _math.floor(y / 1000)
+        squarex = int(_math.floor(x / 1000))
+        squarey = int(_math.floor(y / 1000))
         filename = "{}{}{}".format(code, squarex, squarey)
         dirname, actual_name = self._find_filename(filename)
         return _Image.open(_os.path.join(dirname, actual_name))
@@ -595,10 +604,10 @@ class TileSplitter(TileSource):
             x, y = int(x), int(y)
         except Exception:
             raise ValueError("{} appears not to be a valid national grid reference".format(grid_position))
-        sourcex = _math.floor(x / self._source.size_in_meters) * self._source.size_in_meters
-        sourcey = _math.floor(y / self._source.size_in_meters) * self._source.size_in_meters
-        tx = _math.floor((x - sourcex) * self._scale / self._source.size_in_meters)
-        ty = _math.floor((y - sourcey) * self._scale / self._source.size_in_meters)
+        sourcex = int(_math.floor(x / self._source.size_in_meters)) * self._source.size_in_meters
+        sourcey = int(_math.floor(y / self._source.size_in_meters)) * self._source.size_in_meters
+        tx = int(_math.floor((x - sourcex) * self._scale / self._source.size_in_meters))
+        ty = int(_math.floor((y - sourcey) * self._scale / self._source.size_in_meters))
         ty = self._scale - 1 - ty
         key = (code, sourcex, sourcey, tx, ty)
         return self._get(key)
@@ -679,7 +688,7 @@ class Extent(_BaseExtent):
     :param ymax: The range of the y coordinates.
     """
     def __init__(self, xmin, xmax, ymin, ymax):
-        super().__init__(xmin, xmax, ymin, ymax)
+        super(Extent,self).__init__(xmin, xmax, ymin, ymax)
         self.project = self._project
 
     @property
@@ -805,7 +814,7 @@ class Plotter():
         self._ignore_errors = ignore_errors
 
     def _quant(self, x):
-        return _math.floor(x / self._source.size_in_meters)
+        return int(_math.floor(x / self._source.size_in_meters))
 
     def _unquant(self, x):
         return x * self._source.size_in_meters

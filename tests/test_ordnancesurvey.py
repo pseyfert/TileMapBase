@@ -1,5 +1,10 @@
 import pytest
-import unittest.mock as mock
+try:
+    # python 3
+    import unittest.mock as mock
+except ImportError:
+    # python 2
+    import mock
 
 import tilemapbase.ordnancesurvey as ons
 import os, re
@@ -171,15 +176,27 @@ def mock_dir_entry(name):
 def test_MasterMap_init():
     with mock.patch("os.path.abspath") as abspath_mock:
         abspath_mock.return_value = "spam"
-        with mock.patch("os.scandir") as scandir_mock:
-            scandir_mock.return_value = [mock_dir_entry("eggs"),
-                mock_dir_entry("se3214.tif"), mock_dir_entry("sD1234.tif"),
-                mock_dir_entry("sa6543.png")]
-            
-            ons.MasterMap.init("test")
-
-            abspath_mock.assert_called_with("test")
-            scandir_mock.assert_called_with("spam")
+        import sys
+        if sys.version_info.major == 3:
+            with mock.patch("os.scandir") as scandir_mock:
+                scandir_mock.return_value = [mock_dir_entry("eggs"),
+                    mock_dir_entry("se3214.tif"), mock_dir_entry("sD1234.tif"),
+                    mock_dir_entry("sa6543.png")]
+                
+                ons.MasterMap.init("test")
+    
+                abspath_mock.assert_called_with("test")
+                scandir_mock.assert_called_with("spam")
+        else:
+            with mock.patch("scandir.scandir") as scandir_mock:
+                scandir_mock.return_value = [mock_dir_entry("eggs"),
+                    mock_dir_entry("se3214.tif"), mock_dir_entry("sD1234.tif"),
+                    mock_dir_entry("sa6543.png")]
+                
+                ons.MasterMap.init("test")
+    
+                abspath_mock.assert_called_with("test")
+                scandir_mock.assert_called_with("spam")
     
     assert set(ons.MasterMap.found_tiles()) == {("se", "32", "14"),
         ("sD", "12", "34"), ("sa", "65", "43")}
