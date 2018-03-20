@@ -120,6 +120,11 @@ class Cache(_cache.ConcreteCache):
     def remove(self, key):
         self._delegate.remove(self.make_request_string(*key))
 
+    def remove_source(self, source_name):
+        for element in self.query():
+            if source_name == element[0][0]:
+                self.remove(element[0])
+
     def dump(self, dirname):
         """Dump all the files to the given directory.  The directory should
         be empty.  The directory structure will be:
